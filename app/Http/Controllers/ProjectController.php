@@ -6,6 +6,8 @@ use App\Models\Project;
 use App\Http\Requests\StoreProjectRequest;
 use App\Http\Requests\UpdateProjectRequest;
 use App\Http\Resources\ProjectResource;
+use App\Http\Resources\TaskResource; // Import TaskResource
+
 
 class ProjectController extends Controller
 {
@@ -27,6 +29,7 @@ class ProjectController extends Controller
         }
 
         $projects = $query->orderBy($sortField, $sortDirection)->paginate(10);
+
         return inertia("project/index", [
             "projects" => ProjectResource::collection($projects),
             'queryParams' => request()->query() ?: null,
@@ -53,11 +56,30 @@ class ProjectController extends Controller
      */
     public function show(Project $project)
     {
-        // Show the details of the specified project
+        $query = $project->tasks();
+        $sortField = request("sort_field", 'created_at');
+        $sortDirection = request("sort_direction", "desc");
+
+        if (request("name")) {
+            $query->where("name", "like", "%" . request("name") . "%");
+        }
+
+        if (request("status")) {
+            $query->where("status", request("status"));
+        }
+
+        $tasks = $query->orderBy($sortField, $sortDirection)->paginate(10);
+
+
+        return inertia("project/show", [
+            "project" => new ProjectResource($project),
+            "tasks"=>TaskResource::collection($tasks),
+            'queryParams' => request()->query() ?: null,
+        ]);
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * Show the form for editiAng the specified resource.
      */
     public function edit(Project $project)
     {
