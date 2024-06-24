@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
+use App\Http\Resources\UserResource; // Import TaskResource
 
 class UserController extends Controller
 {
@@ -13,8 +14,28 @@ class UserController extends Controller
      */
     public function index()
     {
-        //
+        $query = users::query();
+        $sortField = request("sort_field", 'created_at');
+        $sortDirection = request("sort_direction", "desc");
+
+        if (request("name")) {
+            $query->where("name", "like", "%" . request("name") . "%");
+        }
+
+        if (request("status")) {
+            $query->where("status", request("status"));
+        }
+
+        $projects = $query->orderBy($sortField, $sortDirection)->paginate(10);
+
+        return inertia("user/index", [
+            "projects" => UserResource::collection($projects),
+            'queryParams' => request()->query() ?: null,
+            'Success' => session('Success')
+
+        ]);
     }
+
 
     /**
      * Show the form for creating a new resource.

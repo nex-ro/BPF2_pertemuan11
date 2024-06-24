@@ -7,7 +7,8 @@ use App\Http\Requests\StoreProjectRequest;
 use App\Http\Requests\UpdateProjectRequest;
 use App\Http\Resources\ProjectResource;
 use App\Http\Resources\TaskResource; // Import TaskResource
-
+use Illuminate\Support\Facades\Auth; // Import Auth
+use Illuminate\Support\Str;
 
 class ProjectController extends Controller
 {
@@ -33,6 +34,7 @@ class ProjectController extends Controller
         return inertia("project/index", [
             "projects" => ProjectResource::collection($projects),
             'queryParams' => request()->query() ?: null,
+            'Success' => session('Success')
         ]);
     }
     /**
@@ -40,7 +42,7 @@ class ProjectController extends Controller
      */
     public function create()
     {
-        // Return the view for creating a new project
+        return inertia("project/create");
     }
 
     /**
@@ -48,8 +50,27 @@ class ProjectController extends Controller
      */
     public function store(StoreProjectRequest $request)
     {
-        // Store the newly created project
+        $data = $request->validated();
+
+        // Extract image from data
+        $image = $data['image'] ?? null;
+        print_r($data['image']) ;
+        // Set created_by and updated_by
+        $data['created_by'] = Auth::id();
+        $data['updated_by'] = Auth::id();
+
+        // Process image if present
+        if ($image) {
+            $data['image_path'] = $image->store('projects/'.Str::random(), 'public');
+        }
+
+        // Create project
+        Project::create($data);
+
+        // Redirect with success message
+        return redirect()->route('project.index')->with('Success', 'Project was created');
     }
+
 
     /**
      * Display the specified resource.
@@ -83,7 +104,9 @@ class ProjectController extends Controller
      */
     public function edit(Project $project)
     {
-        // Return the view for editing the specified project
+        return inertia('project/edit', [
+            'project' => new ProjectResource($project),
+        ]);
     }
 
     /**
@@ -91,14 +114,35 @@ class ProjectController extends Controller
      */
     public function update(UpdateProjectRequest $request, Project $project)
     {
-        // Update the specified project
+        $name = $project->name;
+        $data = $request->validated();
+        $image =$data['image']??null;
+        // Set updated_by field
+        $data['updated_by'] = Auth::id();
+
+        if ($image) {
+            if ($project->image_path) {
+                Storage::disk('public')->delete($project->image_path);
+            }
+            // Store new image
+            $data['image_path'] = $image->store('project/'. Str::random(), 'public');
+        }
+
+        $project->update($data);
+
+        return redirect()->route('project.index')
+            ->with('Success', "Project \"$name\" was updated");
     }
+
 
     /**
      * Remove the specified resource from storage.
      */
     public function destroy(Project $project)
     {
-        // Remove the specified project from storage
+    $name = $project->name;
+    $project->delete();
+    return redirect()->route('project.index')
+        ->with('Success', "Project \"$name\" was deleted");
     }
 }
