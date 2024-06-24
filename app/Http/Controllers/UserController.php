@@ -14,7 +14,7 @@ class UserController extends Controller
      */
     public function index()
     {
-        $query = users::query();
+        $query = User::query();
         $sortField = request("sort_field", 'created_at');
         $sortDirection = request("sort_direction", "desc");
 
